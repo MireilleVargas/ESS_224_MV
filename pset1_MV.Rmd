@@ -1,5 +1,7 @@
 ---
-title: "Pset1"
+title: "Pset 1"
+author: "Mireille Vargas"
+date: "`r format(Sys.Date(), '%d %B, %Y')`"
 output: html_document
 ---
 
@@ -7,7 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, include=FALSE}
 library(raster)
 library(ncdf4)
 library(rgdal)
@@ -18,11 +20,12 @@ library(tigris)
 library(leaflet)
 library(mapview)
 library(sf)
+library(knitr)
 ```
 
 Downloading the soil data
 ```{r}
-soil<- read.csv("https://inst-fs-iad-prod.inscloudgate.net/files/90d7237e-3130-42e6-b07d-a3b96a1da92f/Q1_soil_moisture.csv?download=1&token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpYXQiOjE2MTgwNzMwOTUsInVzZXJfaWQiOiIzNTkxMDAwMDAwMDEzNTgwNyIsInJlc291cmNlIjoiL2ZpbGVzLzkwZDcyMzdlLTMxMzAtNDJlNi1iMDdkLWEzYjk2YTFkYTkyZi9RMV9zb2lsX21vaXN0dXJlLmNzdiIsImp0aSI6ImY2MTViODVmLTBhMmUtNGEzOS04YjMyLWUyNGQ1NTg3ZDgwYiIsImhvc3QiOiJjYW52YXMuc3RhbmZvcmQuZWR1Iiwib3JpZ2luYWxfdXJsIjoiaHR0cHM6Ly9hMzU5MS03NjQ5MTk1LmNsdXN0ZXI5OC5jYW52YXMtdXNlci1jb250ZW50LmNvbS9maWxlcy8zNTkxfjc2NDkxOTUvZG93bmxvYWQ_ZG93bmxvYWRfZnJkPTFcdTAwMjZub19jYWNoZT10cnVlXHUwMDI2cmVkaXJlY3Q9dHJ1ZVx1MDAyNnNmX3ZlcmlmaWVyPWV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSklVelV4TWlKOS5leUoxYzJWeVgybGtJam9pTXpVNU1UQXdNREF3TURBeE16VTRNRGNpTENKeWIyOTBYMkZqWTI5MWJuUmZhV1FpT2lJek5Ua3hNREF3TURBd01EQXdNREF3TVNJc0ltOWhkWFJvWDJodmMzUWlPaUpqWVc1MllYTXVjM1JoYm1admNtUXVaV1IxSWl3aWNtVjBkWEp1WDNWeWJDSTZiblZzYkN3aVptRnNiR0poWTJ0ZmRYSnNJam9pYUhSMGNITTZMeTlqWVc1MllYTXVjM1JoYm1admNtUXVaV1IxTDJacGJHVnpMemMyTkRreE9UVXZaRzkzYm14dllXUV9aRzkzYm14dllXUmZabkprUFRGY2RUQXdNalptWVd4c1ltRmphMTkwY3oweE5qRTRNVEV3TnpNNUlpd2laWGh3SWpveE5qRTRNVEV4TURNNWZRLktIN2d3a200YTE2ckc0clE0TUZHVHh1RV9QZHVIRWxOM01Vc1ZjdzNHRTJoVl8xS05HOVhnWnVXSWRaTnNsWDduZ0trX2ViNXl2cnd6aWdETmI3M0h3IiwiZXhwIjoxNjE4MTU5NDk1fQ.V2nMdNbgWKIm6utMrI3sHv5Q00jIrGpD0ZewgJyKFoEiEcnY7_KRT0LuOADEM0LPyDQU5UUzhQ2_UBOOhbmeRQ")
+soil<- read.csv("C:/Users/mireille/Documents/Data/pset1/Q1_soil_moisture.csv")
 ```
 
 # Question 1 
@@ -61,7 +64,10 @@ a2 <- mean(soil$X2) - (B2 * mean(soil$X1))
 a3 <- mean(soil$X3) - (B3 * mean(soil$X1))
 
 #answers
-print(c(B2, B3, a2, a3))
+print("The additive biases of the two data sets are")
+print(c(a2, a3))
+print("The multiplicative biases of the two data sets are")
+print(c(B2, B3))
 ```
 
 
@@ -85,6 +91,7 @@ v2 <- cov(soil$X2, soil$X2) - cov(soil$X1, soil$X2)
 v3 <- cov(soil$X3, soil$X3) - cov(soil$X1, soil$X3)
 
 #answers
+print("The variance of the random error of each of the three data sets")
 print(c(v1, v2, v3))
 ```
 
@@ -106,6 +113,7 @@ Q33<- cov(soil$X3, soil$X3)
 cor_x3 <- sign(Q12*Q23) * sqrt((Q13* Q23)/ (Q33 * Q12))
 
 #answers
+print("The correlation between each of the 3 datasets and the ‘true’ soil moisture")
 print(c(cor_in_situ, cor_x2, cor_x3))
 ```
 
@@ -113,6 +121,7 @@ print(c(cor_in_situ, cor_x2, cor_x3))
 This problem considers several possible ways to use data from the GRACE satellite. In each case, please describe whether this use case is appropriate and if not, why not.
 
 a.) (1 point)  Calculating the exact amount of water in the San Joaquin Valley Aquifer
+
 This is not an appropriate case of the GRACE satellite because satellite data cannot give exact measurement. Furthermore, GRACE data should not be the only data one should base their results on for grabbing an exact-or close to exact- measurement.
 
 
@@ -130,7 +139,7 @@ This questions asks you to download, process, and interpret GRACE data from the 
 
 a.) (2 point) Extract the monthly change in water storage for each of the three GRACE models at the point -120.5, 37.5, a location near Hopeton, CA in the Central Valley (about midway between Modesto and Merced). Plot the individual solution estimates and the average of the three solutions on a single time series plot. Note that there are some gaps in the data record (explanation here: https://grace.jpl.nasa.gov/data/grace_months/). You’ll need to extract the day-of-year ranges from the filenames and convert them to dates to generate the time series.
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 #jpl data
 jpl <- list.files(path = "C:/Users/mireille/Documents/GitHub/ESS_224-CEE_260D/hw1/jpl_grace", pattern = "*.nc", full.names = TRUE)
 
@@ -142,7 +151,7 @@ csr <- list.files(path = "C:/Users/mireille/Documents/GitHub/ESS_224-CEE_260D/hw
 ```
 
 Create a stack of rasters and rotate so that 0-360 is to -180 to 180.
-```{r}
+```{r, warning=FALSE, message=FALSE, results='hide'}
 #jpl data
 jpl_ras <- lapply(jpl, raster::raster, lvar = 4, level = 1)
 
@@ -163,7 +172,7 @@ csr_brick <- raster:: brick(csr_ras) %>%
 ```
 
 Extract the value at the given location.
-```{r}
+```{r, warning=FALSE, message=FALSE}
 #jpl data
 jpl_vals <- raster:: extract(jpl_brick, matrix(c(-120.5, 37.5), ncol = 2), fun = mean, df = TRUE) 
 jpl_vals <- jpl_vals %>% t() %>% as.data.frame()
@@ -327,7 +336,7 @@ all_data <- rbind(jpl_data, gfz_data, csr_data, avg_data)
 ```
 
 ```{r}
-ggplot(data = all_data, aes(x = dates, y = lwe_thickness, group = type, color = type)) + geom_line()
+ggplot(data = all_data, aes(x = dates, y = lwe_thickness, group = type, color = type)) + geom_line() + labs(title = "GRACE data of Monthly Changes in LWE Thickness at (-120.5, 37.5)", y = "Date", x = "Monthly Changes in LWE thickness (m)") 
 
 ```
 ```{r}
@@ -346,7 +355,7 @@ We see in this graph that total water storage decreases until mid fall and then 
 
 
 c)(1 point extra credit) Plot a map across the Continental US (or this approximate region) that shows the standard deviation of the three solution estimates at each grid cell for August 2016. What could be learned from a map like this?
-```{r}
+```{r, warning=FALSE, message=FALSE, results='hide'}
 #C:\Users\mireille\Documents\Data\pset1
 aug <- list.files(path = "C:/Users/mireille/Documents/Data/pset1", pattern = "*.nc", full.names = TRUE)
 
@@ -360,9 +369,9 @@ aug_brick <- raster:: brick(aug_ras) %>%
 aug_sd <- calc(aug_brick, fun = sd) 
 ```
 
-```{r}
+```{r, warning=FALSE, message=FALSE, results='hide'}
 #projection
-projection <- "+proj=utm +zone=10 +ellps=GRS80 +datum=NAD83 +units=ft +no_defs"
+#projection <- "+proj=utm +zone=10 +ellps=GRS80 +datum=NAD83 +units=ft +no_defs"
 
 #grab states for US
 
@@ -371,16 +380,15 @@ states <- states(cb = TRUE) %>%
          NAME != "Commonwealth of the Northern Mariana Islands",
           NAME != "Puerto Rico",
            NAME != "Guam",
-         NAME != "American Samoa") #%>% 
-  #st_transform(st_crs(projection))
-
-# #now crop to the US
-# aug_us <- crop(aug_sd, states)
-# 
-# mapview(aug_us)
+         NAME != "American Samoa")
 
 aug_mask <- mask(aug_sd, states)
-mapview(aug_mask)
+#mapview(aug_mask)
 ```
+
+```{r}
+knitr::include_graphics("C:/Users/mireille/Documents/Data/pset1/Q3P3_pset1.png")
+```
+
 
 Standard deviation tells us the spread of the data and gives a measurement of how far each observed value is from the mean. A map like this can tell us areas that have more or less than the average total water storage for a given period of time.
