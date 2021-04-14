@@ -1,0 +1,45 @@
+---
+title: "Pset 2"
+author: "Mireille Vargas"
+date: "4/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#Question 1
+You want to use triple collocation for estimating the error statistics of a new, global, 50 km resolution soil moisture retrieval from SpySat-7, a P-band radiometer for which only you have access. What types of datasets might you use to do so accurately?  
+Hint: What conditions must be met for application of triple collocation?  
+Hint 2: One of your datasets will be a P-band radiometer
+
+#Question 2
+Recall that we saw in class that the attenuation of microwaves is governed by the term
+
+Defining the real component of ε as ε’ and the imaginary component of ε as ε’’, we can expand
+
+This can be used to calculate a ‘penetration depth’, the approximate depth from which soil moisture values are contributing to the observations. It is defined as the depth at which the wave magnitude is reduced to a factor of 1/e (the so-called ‘e-folding depth’). The penetration depth ρcan be shown to equal (to first approximation) 
+
+where λ is the wavelength of the measurement.
+
+The image below (from the Ulaby and Long textbook) shows measurements of the real and imaginary components of the dielectric content at C-band under different moisture conditions and soil types. Where do you expect waves to penetrate deeper - dry or wet soil? Sandy or clay-ey soil? Why?
+
+
+#Question 3
+In this question, we’ll build a simple retrieval algorithm to study the sensitivity of soil moisture radiometry to different ancillary parameters. This will be very similar to many of the retrieval algorithms operationally used today!
+
+For simplicity, we assume we only have one polarization channel (horizontal polarization) in the radiometer used, but it is otherwise magically noise-free! To further simplify, our initial goal will be to solve not for the soil moisture value, but for the dielectric constantε. In operational soil moisture retrieval settings, the ε is a complex quantity with both real and imaginary components. A soil moisture dielectric mixing model would be used to predict what complex values of ε are associated with different possible soil moisture levels for a given soil. To avoid lengthy sets of equations, we skip the soil moisture dielectric mixing model here and just have you solve for ε. Fur further simplicity, and because, for soils, the imaginary components of ε are often much lower than the real components (compare ε’ and ε’’ in the Figure for problem 2), we will assume here that the imaginary component of the dielectric constant you are solving for is zero.  
+
+Assume observations are made at an incidence angle of 35 degrees. We further know that the roughness rms-height of this soil surface is h = 0.13, the single-scattering albedo of the vegetation is 0.05, and the VOD is 0.3. The surface temperature is 20oC. Assume the measurement frequency is sufficiently high that we can assume soil moisture is uniform vertically (e.g. not P-band).
+
+a.) (2 points) Under these incidence angle roughness, albedo, temperature, and vegetation conditions, what H-pol brightness temperature would you predict if ε = 4?
+
+b.) (2 points) Now assume that we don’t know e, just like we wouldn’t for real satellite data. the dielectric constant observed brightness temperature at H-pol is 256K. What is the retrieved dielectric constant ε of the underlying soil associated with this observation?
+
+c.) (1 point extra credit) What is the relative change in retrieved dielectric constant under a 20% increase in the single-scattering albedo? What about a 4oC increase in surface temperature (equal to 20% of the value in Celsius)? 
+
+d.) (1 point extra credit) Which of these ‘parameters’ is the retrieved dielectric constant most sensitive to?
+
+e.) ( 1 point extra credit) Now imagine you also have a measurement of V-pol brightness temperature of 243K. The VOD estimate you used earlier is uncertain, so instead you want to solve for both the dielectric constant and the VOD at the same time. What cost function would you minimize? 
