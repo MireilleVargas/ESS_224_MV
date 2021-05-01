@@ -1,0 +1,172 @@
+---
+title: "Untitled"
+author: "Mireille Vargas"
+date: "5/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(rgee)
+library(mapview)
+library(exactextractr)
+library(raster)
+library(sf)
+library(tidyverse)
+library(dplyr)
+library(tigris)
+library(leaflet)
+library(sp)
+library(rgeos)
+library(geojsonio)
+library(googledrive)
+library(stars)
+```
+
+
+```{r, echo=FALSE}
+ee_Initialize()
+ee_check()
+
+# ee_check_python()
+# ee_check_credentials()
+# ee_check_python_packages()
+```
+
+Grab the area of interest
+```{r}
+counties <- ee$FeatureCollection("TIGER/2016/Counties")
+myfilter <- ee$Filter$inList(
+  opt_leftField = "NAME",
+  opt_rightValue = list(
+    "Polk"
+  )
+)
+
+polk <- counties$filter(myfilter)
+```
+
+
+```{r}
+years_all_gridmet <- data.frame(
+  start = c((seq(as.Date("1979-01-01"), as.Date("2021-03-01"), by = "month"))) %>% 
+    as.character() %>% 
+   append( c((seq(as.Date("1979-01-15"), as.Date("2021-03-15"), by = "month"))) %>% 
+    as.character()),
+  end =   c((seq(as.Date("1979-01-14"), as.Date("2021-03-14"), by = "month"))) %>% 
+    as.character() %>%
+    append(c((seq(as.Date("1979-02-01"), as.Date("2021-04-01"), by = "month")) - 1) %>% 
+    as.character()),
+  counts = c(seq("1", "1014"))
+)
+```
+
+```{r}
+bartow <- ee$Geometry$Point(c(27.88608, -81.83251)) #latitude goes first and then longitude
+
+aoi <- ee$Geometry$Polygon(
+  coords = list(
+    c(27.84601, -81.91396),
+    c(27.84601, -81.77114),
+    c(27.94736, -81.77114),
+    c(27.94736, -81.91396),
+    c(27.84601, -81.91396)
+  )
+)
+
+#create an sf object
+DT <- data.frame(
+  lat1 = 27.88608,
+  long1 = -81.83251
+)
+
+aoi2 <- st_as_sf(DT, coords = c("long1", "lat1"), remove = FALSE) %>% 
+  st_set_crs(4326)
+```
+
+```{r}
+#check
+
+landsat <- ee$Image("LANDSAT/LC08/C01/T1_TOA/LC08_044034_20140318")
+vizParams <- list(
+  bands = c('B5', 'B4', 'B3'),
+  min = 0,
+  max = 0.5,
+  gamma = c(0.95, 1.1, 1)
+)
+Map$setCenter(lon =-81.83251, lat = 27.88608, 10)
+Map$addLayer(landsat, vizParams, 'false color composite')
+```
+
+Create functions that grab each band rename it
+
+Grab bands. The bands of interest are:
+pr: precipitation
+rmax: max relative humidity
+rmin : min relative humidity
+tmmn : min temperature
+tmmx: max temperature
+srad : Surface downward shortwave radiation
+vs: Wind velocity at 10m
+
+```{r}
+bands <- c("pr", "rmax", "rmin", "tmmn", "tmmx", "srad", "vs")
+```
+
+test
+```{r}
+  gridmet<- ee$ImageCollection("IDAHO_EPSCOR/GRIDMET")$ #grabbing maximum relative temperature from GridMET
+  filterBounds(aoi)$ #filtering within the bay area counties
+  filterDate(years_all_gridmet$start[1], years_all_gridmet$end[1])$
+  select(bands)$ #all interested features
+  mean()
+# trying out extract
+   values <- ee_extract(
+   x = gridmet,
+   y = aoi2["lat1"],
+   scale = 4000,
+   fun = ee$Reducer$mean(),
+   sf = TRUE
+  ) #Error in data.frame(..., check.names = FALSE) : arguments imply differing number of rows: 1, 0
+
+#trying out the method from stack exchange
+yieldLocation <- ee$FeatureCollection(table) #giving me issues
+result <- gridmet$reduceRegions(yieldLocation, ee$Reducer$mean(), 1)
+```
+
+
+
+Going through the whole loop
+```{r}
+for (i in 1:nrow(years_all_gridmet)){
+  gridmet<- ee$ImageCollection("IDAHO_EPSCOR/GRIDMET")$ #grabbing maximum relative temperature from GridMET
+  filterBounds(bartow)$ #filtering within the bay area counties
+  filterDate(years_all_gridmet$start[i], years_all_gridmet$end[i])$
+  select(bands)$ #all interested features
+  median()
+  
+   values <- ee_extract(
+   x = gridmet,
+   y = aoi2["lat1"],
+   scale = 4000,
+   fun = ee$Reducer$mean(),
+   sf = TRUE
+  )
+  
+  #create unique dataframes to later bind
+  assign(paste0("values_", years_all_gridmet$counts[i], sep = ""), values)
+  
+  #Save! Especially if you have bad wifi!!!!!!
+  saveRDS(values, paste0("values_", years_all_gridmet$counts[i], ".rds"))
+  
+  #print for your own sanity
+  print(i)
+  
+}
+```
+
+Would then bind all the values together
