@@ -1,0 +1,248 @@
+---
+title: "Rain Gauge"
+author: "Mireille Vargas"
+date: "5/1/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(lubridate)
+```
+
+
+```{r}
+# #read in data
+# 
+# rain <- read.csv("D:/NOAA_rain_gauge/Rain_Gauge_summary.csv")
+# 
+# rain_vals <- rain$Prec_no_na
+```
+
+
+
+```{r}
+# years_all <- data.frame(
+#   start = c((seq(as.Date("1979-01-01"), as.Date("2021-03-01"), by = "month"))) %>% 
+#     as.character() %>% 
+#    append( c((seq(as.Date("1979-01-15"), as.Date("2021-03-15"), by = "month"))) %>% 
+#     as.character()),
+#   end =   c((seq(as.Date("1979-01-14"), as.Date("2021-03-14"), by = "month"))) %>% 
+#     as.character() %>%
+#     append(c((seq(as.Date("1979-02-01"), as.Date("2021-04-01"), by = "month")) - 1) %>% 
+#     as.character())
+# )
+# 
+# 
+# data <- years_all[order(years_all$start),]
+# 
+# data <- data %>% 
+#   cbind(rain_vals)
+# 
+# #write.csv(data, "rain_gauge_data.csv")
+```
+
+Read in the data
+```{r}
+# rain_gauge_data <- read.csv("rain_gauge_data.csv") %>% #precipitation is in inches
+#   select(
+#     start,
+#     end,
+#     rain_vals
+#   )
+# 
+# #organize the gridmet data from bartow
+# gridmet_bartow <- readRDS("gridmet_vals_bartow.rds") %>% 
+#   dplyr::select(!counts)
+# 
+# 
+# gridmet_bartow <- gridmet_bartow[order(gridmet_bartow$start),]
+# 
+# sum(rain_gauge_data$rain_vals == 0.00, na.rm = TRUE)
+# sum(is.na(rain_gauge_data))
+# 
+# #look at na values
+# new_DF <- rain_gauge_data[is.na(rain_gauge_data$rain_vals),]
+# 
+# no_na <- rain_gauge_data[!is.na(rain_gauge_data$rain_vals),]
+# zero_df <- no_na[(no_na$rain_vals == 0.00),]
+# 
+# #filter
+# #bartow <- polk_county[polk_county$NAME %in% "BARTOW",]
+# 
+# gridmet_bartow_na <- gridmet_bartow[gridmet_bartow$start %in% new_DF$start,] #there are 3 zero values!
+# 
+# gridmet_bartow_zero <- gridmet_bartow[gridmet_bartow$start %in% zero_df$start,]
+```
+
+This is the actual cleaning. Focus here.
+
+This chunk selects the start, end, and rain_vals (sum of rain in inches for time range). I then seperate the dates so I can calculate how many days lapsed in each time range. Then I create a new column of average precipitation in mm based on the difference in the days in the time range and converting inches to mm. I join in the gridmet data and select only my desired columns. Then i transpose my dataframe and convert back to a dataframe.
+```{r}
+#clean up data to remove NAs and to convert inches to mm
+rain_gauge_data <- read.csv("rain_gauge_data.csv") %>% #precipitation is in inches
+  select(
+    start,
+    end,
+    rain_vals
+  )
+
+gridmet_bartow <- readRDS("gridmet_vals_bartow.rds") %>% 
+  dplyr::select(!counts)
+
+all_data_bartow <- read.csv("rain_gauge_data.csv") %>% #precipitation is in inches
+  select(
+    start,
+    end,
+    rain_vals
+  )
+
+all_data_bartow <- all_data_bartow %>%
+  separate(start, into = c('year_start', 'month_start', 'day_start')) %>%
+  
+  separate(end, into = c('year_end', 'month_end', 'day_end'))
+
+all_data_bartow$day_start <- all_data_bartow$day_start %>% 
+  as.integer()
+all_data_bartow$day_end <- all_data_bartow$day_end %>% 
+  as.integer()  
+  
+all_data_bartow <- all_data_bartow %>% 
+  mutate(
+    rain_avg_mm = (rain_vals * 25.4)/(day_end - day_start)
+  ) %>% 
+  mutate(
+    rain_avg_in = rain_vals/(day_end - day_start)
+  ) %>% 
+  mutate(
+    start = rain_gauge_data$start
+  ) %>% 
+  left_join(
+    gridmet_bartow,
+    by = "start"
+  ) %>% 
+  select(
+    #rain_avg_mm,
+    #rain_avg_in,
+    start,
+    end, 
+    rmax,
+    rmin,
+    srad,
+    tmmn,
+    tmmx,
+    vs
+  ) %>% 
+  t() %>% 
+  as.data.frame()
+
+```
+
+Creating the Y.dat of previous time steps of precipitation. First I had to recreate some of the steps from the previous chunk to grab average precipitation in mm. Then I added that column into my y dat dataframe. From there I created 10 new columns grabbing the previous 10 time steps. I deselected the first ten rows that would ahve NA values. I then transposed the rows and columns and converted to a dataframe.
+```{r}
+#library(data.table)
+rain_avg <- read.csv("rain_gauge_data.csv") %>% #precipitation is in inches
+  select(
+    start,
+    end,
+    rain_vals
+  )
+
+rain_avg <- rain_avg %>%
+  separate(start, into = c('year_start', 'month_start', 'day_start')) %>%
+  
+  separate(end, into = c('year_end', 'month_end', 'day_end'))
+
+rain_avg$day_start <- rain_avg$day_start %>% 
+  as.integer()
+rain_avg$day_end <- rain_avg$day_end %>% 
+  as.integer()  
+  
+rain_avg <- rain_avg %>% 
+  mutate(
+    rain_avg_mm = (rain_vals * 25.4)/(day_end - day_start)
+  ) %>% 
+  mutate(
+    rain_avg_in = rain_vals/(day_end - day_start)
+  )
+
+rain_avg_mm <- rain_avg$rain_avg_mm
+
+y_dat <- rain_gauge_data %>% 
+  cbind(rain_avg_mm) %>% 
+  select(start,
+         end,
+         rain_avg_mm)
+
+y_dat <- y_dat %>% 
+  mutate(
+    prev_1 = lag(
+      rain_avg_mm, 1
+    )
+  ) %>% 
+  mutate(
+    prev_2 = lag(
+      rain_avg_mm, 2
+    )
+  ) %>% 
+  mutate(
+    prev_3 = lag(
+      rain_avg_mm, 3
+    )
+  ) %>% 
+  mutate(
+    prev_4 = lag(
+      rain_avg_mm, 4
+    )
+  ) %>% 
+  mutate(
+    prev_5 = lag(
+      rain_avg_mm, 5
+    )
+  ) %>% 
+  mutate(
+    prev_6 = lag(
+      rain_avg_mm, 6
+    )
+  ) %>% 
+  mutate(
+    prev_7 = lag(
+      rain_avg_mm, 7
+    )
+  ) %>% 
+  mutate(
+    prev_8 = lag(
+      rain_avg_mm, 8
+    )
+  ) %>% 
+  mutate(
+    prev_9 = lag(
+      rain_avg_mm, 9
+    )
+  ) %>% 
+  mutate(
+    prev_10 = lag(
+      rain_avg_mm, 10
+    )
+  )
+
+#deselect the first ten rows
+y_dat <- y_dat[c(11:1014),]
+  
+#now transpose and create into a data frame
+y_dat <- y_dat %>% 
+  t() %>% 
+  as.data.frame()
+```
+
+Save the data as csv files
+```{r}
+write.csv(all_data_bartow, "x_data.csv")
+write.csv(y_dat, "y_data.csv")
+```
+

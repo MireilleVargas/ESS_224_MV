@@ -10,7 +10,6 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-
 library(rgee)
 library(mapview)
 library(exactextractr)
@@ -25,6 +24,20 @@ library(rgeos)
 library(geojsonio)
 library(googledrive)
 library(stars)
+```
+
+```{r}
+palm_county <- st_read("D:/Municipal_Boundaries.shp")
+boca_raton <- palm_county[palm_county$MUNINAME %in% "BOCA RATON",]
+
+#read in portland
+oregon_county <- st_read("D:/Portland/City_Boundaries.shp")
+portland <- oregon_county[oregon_county$CITYNAME %in% "Portland",]
+
+#read in bartow
+polk_county <- st_read("D:/Bartow/par_citylm_2019.shp")
+bartow <- polk_county[polk_county$NAME %in% "BARTOW",]
+
 ```
 
 
@@ -43,11 +56,13 @@ counties <- ee$FeatureCollection("TIGER/2016/Counties")
 myfilter <- ee$Filter$inList(
   opt_leftField = "NAME",
   opt_rightValue = list(
+    #"Palm Beach"
+    #"Multnomah"
     "Polk"
   )
 )
 
-polk <- counties$filter(myfilter)
+aoi <- counties$filter(myfilter)
 ```
 
 
@@ -66,26 +81,26 @@ years_all_gridmet <- data.frame(
 ```
 
 ```{r}
-bartow <- ee$Geometry$Point(c(27.88608, -81.83251)) #latitude goes first and then longitude
-
-aoi <- ee$Geometry$Polygon(
-  coords = list(
-    c(27.84601, -81.91396),
-    c(27.84601, -81.77114),
-    c(27.94736, -81.77114),
-    c(27.94736, -81.91396),
-    c(27.84601, -81.91396)
-  )
-)
-
-#create an sf object
-DT <- data.frame(
-  lat1 = 27.88608,
-  long1 = -81.83251
-)
-
-aoi2 <- st_as_sf(DT, coords = c("long1", "lat1"), remove = FALSE) %>% 
-  st_set_crs(4326)
+# bartow <- ee$Geometry$Point(c(27.88608, -81.83251)) #latitude goes first and then longitude
+# 
+# aoi <- ee$Geometry$Polygon(
+#   coords = list(
+#     c(27.84601, -81.91396),
+#     c(27.84601, -81.77114),
+#     c(27.94736, -81.77114),
+#     c(27.94736, -81.91396),
+#     c(27.84601, -81.91396)
+#   )
+# )
+# 
+# #create an sf object
+# DT <- data.frame(
+#   lat1 = 27.88608,
+#   long1 = -81.83251
+# )
+# 
+# aoi2 <- st_as_sf(DT, coords = c("long1", "lat1"), remove = FALSE) %>% 
+#   st_set_crs(4326)
 ```
 
 ```{r}
@@ -119,54 +134,82 @@ bands <- c("pr", "rmax", "rmin", "tmmn", "tmmx", "srad", "vs")
 
 test
 ```{r}
-  gridmet<- ee$ImageCollection("IDAHO_EPSCOR/GRIDMET")$ #grabbing maximum relative temperature from GridMET
-  filterBounds(aoi)$ #filtering within the bay area counties
-  filterDate(years_all_gridmet$start[1], years_all_gridmet$end[1])$
-  select(bands)$ #all interested features
-  mean()
-# trying out extract
-   values <- ee_extract(
-   x = gridmet,
-   y = aoi2["lat1"],
-   scale = 4000,
-   fun = ee$Reducer$mean(),
-   sf = TRUE
-  ) #Error in data.frame(..., check.names = FALSE) : arguments imply differing number of rows: 1, 0
+#   gridmet<- ee$ImageCollection("IDAHO_EPSCOR/GRIDMET")$ #grabbing maximum relative temperature from GridMET
+#   filterBounds(aoi)$ #filtering within the bay area counties
+#   filterDate(years_all_gridmet$start[1], years_all_gridmet$end[1])$
+#   select(bands)$ #all interested features
+#   mean()
+# # trying out extract
+#    values <- ee_extract(
+#    x = gridmet,
+#    #y = boca_raton["MUNINAME"],
+#    #y = portland["CITYNAME"],
+#    y = bartow["NAME"],
+#    scale = 4000,
+#    fun = ee$Reducer$mean(),
+#    sf = TRUE
+#   ) #Error in data.frame(..., check.names = FALSE) : arguments imply differing number of rows: 1, 0
 
-#trying out the method from stack exchange
-yieldLocation <- ee$FeatureCollection(table) #giving me issues
-result <- gridmet$reduceRegions(yieldLocation, ee$Reducer$mean(), 1)
+# #trying out the method from stack exchange
+# yieldLocation <- ee$FeatureCollection(table) #giving me issues
+# result <- gridmet$reduceRegions(yieldLocation, ee$Reducer$mean(), 1)
 ```
 
 
 
 Going through the whole loop
 ```{r}
+
+gridmet_vals <- NULL
+
 for (i in 1:nrow(years_all_gridmet)){
   gridmet<- ee$ImageCollection("IDAHO_EPSCOR/GRIDMET")$ #grabbing maximum relative temperature from GridMET
-  filterBounds(bartow)$ #filtering within the bay area counties
+  filterBounds(aoi)$ #filtering within the bay area counties
   filterDate(years_all_gridmet$start[i], years_all_gridmet$end[i])$
   select(bands)$ #all interested features
   median()
   
    values <- ee_extract(
    x = gridmet,
-   y = aoi2["lat1"],
+   # y = boca_raton["MUNINAME"],
+   #y = portland["CITYNAME"],
+   y = bartow["NAME"],
    scale = 4000,
    fun = ee$Reducer$mean(),
    sf = TRUE
   )
   
-  #create unique dataframes to later bind
-  assign(paste0("values_", years_all_gridmet$counts[i], sep = ""), values)
+  gridmet_vals <- gridmet_vals %>% 
+    rbind(values)
+  
+  #create unique dataframes
+  #assign(paste0("values_", years_all_gridmet$counts[i], sep = ""), values)
   
   #Save! Especially if you have bad wifi!!!!!!
-  saveRDS(values, paste0("values_", years_all_gridmet$counts[i], ".rds"))
+  #saveRDS(values, paste0("values_", years_all_gridmet$counts[i], ".rds"))
+  
+  saveRDS(gridmet_vals, "gridmet_vals_bartow.rds")
   
   #print for your own sanity
   print(i)
   
 }
+
+# saveRDS(gridmet_vals, "gridmet_data.rds")
+# 
+# sum(gridmet_vals$pr == 0)
+
+gridmet_vals %>% 
+  cbind(years_all_gridmet)
+
+# gridmet_boca <- readRDS("gridmet_vals_bartow.rds")
+# gridmet_boca <- gridmet_boca %>% 
+#   cbind(years_all_gridmet)
+# saveRDS(gridmet_boca, "gridmet_vals_bartow.rds")
+# 
+# gridmet_port <- readRDS("gridmet_vals_portland.rds")
+# gridmet_port <- gridmet_port %>% 
+#   cbind(years_all_gridmet)
+# saveRDS(gridmet_port, "gridmet_vals_portland.rds")
 ```
 
-Would then bind all the values together
