@@ -1,5 +1,5 @@
 ---
-title: "Pset 2"
+title: "PSet 2"
 author: "Mireille Vargas"
 date: "4/14/2021"
 output: html_document
@@ -10,12 +10,17 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-#Question 1
+# Question 1
 You want to use triple collocation for estimating the error statistics of a new, global, 50 km resolution soil moisture retrieval from SpySat-7, a P-band radiometer for which only you have access. What types of datasets might you use to do so accurately?  
 Hint: What conditions must be met for application of triple collocation?  
 Hint 2: One of your datasets will be a P-band radiometer
 
-#Question 2
+Triple collocation has three assumptions and two of those are that the random errors are independent from truth and that random errors are independent from each other. The way to fulfill the second assumption is by having different types of data sources that are likely to not have its errors be correlated. The way to do that is by having one model estimate, one in situ network, and one remote estimate. The remote estimate would be the SpySat-7,a P-band radiometer. The other two datasets would be an in situ network and other a model estimate. If a model estimate is not possible to achieve, then a remote estimate that has a different frequency and different method of measuring soil moisture could be replaced such as Sentinel-1 which is a L-band SAR (Synthetic aperture radar) sensor.
+
+In the case that the datasets may be too similar, one can choose 5 different datasets for triple collocation and tr out different combinations of them.
+
+
+# Question 2
 Recall that we saw in class that the attenuation of microwaves is governed by the term
 
 Defining the real component of ε as ε’ and the imaginary component of ε as ε’’, we can expand
@@ -26,20 +31,149 @@ where λ is the wavelength of the measurement.
 
 The image below (from the Ulaby and Long textbook) shows measurements of the real and imaginary components of the dielectric content at C-band under different moisture conditions and soil types. Where do you expect waves to penetrate deeper - dry or wet soil? Sandy or clay-ey soil? Why?
 
+Penetration will be deeper for dry soil than wet soil because it's lm{epsilon} is smaller and it's sqrt(Re{epsilon}) value is still large enough that the fraction would have a greater value than for wetter soil. There would also be more attenuation for wetter soils.
 
-#Question 3
-In this question, we’ll build a simple retrieval algorithm to study the sensitivity of soil moisture radiometry to different ancillary parameters. This will be very similar to many of the retrieval algorithms operationally used today!
+Penetration will be deeper for sandy soil than clayey soil. Looking at the graph, sandy loam has a higher Re{epsilon} than silty clay no matter what its volumetric moisture % is. Sandy loam also has a lower lm{epsilon} than silty clay. This means that sandy loam would have a higher sqrt(Re{epsilon})/lm{epsilon} value than silty clay. Additionally, clay is more compact than sand and so there would be more attenuation since sandy soil drains water while clay soil retains water more and clay soil is more compact and denser than sandy soil.
 
-For simplicity, we assume we only have one polarization channel (horizontal polarization) in the radiometer used, but it is otherwise magically noise-free! To further simplify, our initial goal will be to solve not for the soil moisture value, but for the dielectric constantε. In operational soil moisture retrieval settings, the ε is a complex quantity with both real and imaginary components. A soil moisture dielectric mixing model would be used to predict what complex values of ε are associated with different possible soil moisture levels for a given soil. To avoid lengthy sets of equations, we skip the soil moisture dielectric mixing model here and just have you solve for ε. Fur further simplicity, and because, for soils, the imaginary components of ε are often much lower than the real components (compare ε’ and ε’’ in the Figure for problem 2), we will assume here that the imaginary component of the dielectric constant you are solving for is zero.  
+# Question 3
+In this question, we'll build a simple retrieval algorithm to study the sensitivity of soil moisture radiometry to different ancillary parameters. This will be very similar to many of the retrieval algorithms operationally used today!
+
+For simplicity, we assume we only have one polarization channel (horizontal polarization) in the radiometer used, but it is otherwise magically noise-free! To further simplify, our initial goal will be to solve not for the soil moisture value, but for the dielectric constantε. In operational soil moisture retrieval settings, the ε is a complex quantity with both real and imaginary components. A soil moisture dielectric mixing model would be used to predict what complex values of ε are associated with different possible soil moisture levels for a given soil. To avoid lengthy sets of equations, we skip the soil moisture dielectric mixing model here and just have you solve for ε. For further simplicity, and because, for soils, the imaginary components of ε are often much lower than the real components (compare ε’ and ε’’ in the Figure for problem 2), we will assume here that the imaginary component of the dielectric constant you are solving for is zero.  
 
 Assume observations are made at an incidence angle of 35 degrees. We further know that the roughness rms-height of this soil surface is h = 0.13, the single-scattering albedo of the vegetation is 0.05, and the VOD is 0.3. The surface temperature is 20oC. Assume the measurement frequency is sufficiently high that we can assume soil moisture is uniform vertically (e.g. not P-band).
 
 a.) (2 points) Under these incidence angle roughness, albedo, temperature, and vegetation conditions, what H-pol brightness temperature would you predict if ε = 4?
+```{r}
+#first calculate reflectivity of smooth (r p)
+#incident angle is 35 degrees
 
-b.) (2 points) Now assume that we don’t know e, just like we wouldn’t for real satellite data. the dielectric constant observed brightness temperature at H-pol is 256K. What is the retrieved dielectric constant ε of the underlying soil associated with this observation?
 
-c.) (1 point extra credit) What is the relative change in retrieved dielectric constant under a 20% increase in the single-scattering albedo? What about a 4oC increase in surface temperature (equal to 20% of the value in Celsius)? 
+top <- cos(35*pi/180) - (sqrt(4 - ((1 - cos(70*pi/180))/2)))
+bottom <- cos(35*pi/180) + (sqrt(4 - ((1 - cos(70*pi/180))/2)))
 
-d.) (1 point extra credit) Which of these ‘parameters’ is the retrieved dielectric constant most sensitive to?
+r_p_h <- (abs(top/bottom))^2
 
-e.) ( 1 point extra credit) Now imagine you also have a measurement of V-pol brightness temperature of 243K. The VOD estimate you used earlier is uncertain, so instead you want to solve for both the dielectric constant and the VOD at the same time. What cost function would you minimize? 
+#now calculate r roughness
+r_rough <- r_p_h*exp(-0.13*cos(35*pi/180))
+
+#calculate temperature brightness for vegetation and soil (T b,p,veg + T b,p,soil)
+
+#convert temperature to Kelvin!!!
+T_kelvin <- 20 + 273.15
+t_veg_soil <- (1-0.05)*(1-exp(-0.3/cos(35*pi/180)))*(1+(r_rough*exp(-0.3/cos(35*pi/180))))*T_kelvin
+
+t_answer <- (1-r_rough)*exp(-0.3/cos(35*pi/180))*T_kelvin + t_veg_soil
+
+print(t_answer) #in Kelvin
+```
+Using the equation attached, the brightness temperature with these conditions would be 267.83 degrees Kelvin (rounded to 2 significant figures).
+
+b.) (2 points) Now assume that we don't know e, just like we wouldn't for real satellite data. the dielectric constant observed brightness temperature at H-pol is 256K. What is the retrieved dielectric constant ε of the underlying soil associated with this observation?
+
+```{r}
+knitr::include_graphics("C:/Users/mirei/OneDrive/Desktop/ESS224/Brightness.png")
+```
+
+
+```{r}
+calculate_T <- function(input1){
+  top_f <- cos(35*pi/180) - (sqrt(input1 - ((1 - cos(70*pi/180))/2)))
+  bottom_f <- cos(35*pi/180) + (sqrt(input1 - ((1 - cos(70*pi/180))/2)))
+  
+  r_p_h_f <- (abs(top_f/bottom_f))^2
+  
+  #now calculate r roughness
+  r_rough_f <- r_p_h_f*exp(-0.13*cos(35*pi/180))
+  
+  #calculate temperature brightness for vegetation and soil (T b,p,veg + T b,p,soil)
+  
+  #convert temperature to Kelvin!!!
+  T_kelvin_f <- 20 + 273.15
+  t_veg_soil_f <- (1-0.05)*(1-exp(-0.3/cos(35*pi/180)))*(1+(r_rough_f*exp(-0.3/cos(35*pi/180))))*T_kelvin_f
+  
+  t_answer_f <- (1-r_rough_f)*exp(-0.3/cos(35*pi/180))*T_kelvin_f + t_veg_soil_f
+  
+  return((256 - t_answer_f)^2)
+}
+
+o <- optimize(calculate_T, interval = c(1, 10))
+o$minimum
+```
+
+Using a cost function based on the image attached, the dielectric constant would be 6.44 (rounded to 2 significant figures). I created an optimize function that looks at which dielectric constant's observed brightness temperature has the smallest errors to the given brightness temperature (256 degrees Kelvin). My range of dielectric constants was from 1 to 10 because I know that the dielectric constant has to be greater than 1 since it can't be lower than the value in free space and the dielectric constant is relative to the value in free space.
+
+c.) (1 point extra credit) What is the relative change in retrieved dielectric constant under a 20% increase in the single-scattering albedo? What about a 4oC increase in surface temperature (equal to 20% of the value in Celsius)?
+```{r}
+knitr::include_graphics("C:/Users/mirei/OneDrive/Desktop/ESS224/Dielectric.png")
+```
+
+
+```{r}
+calculate_a <- function(input1){
+  top_f <- cos(35*pi/180) - (sqrt(input1 - ((1 - cos(70*pi/180))/2)))
+  bottom_f <- cos(35*pi/180) + (sqrt(input1 - ((1 - cos(70*pi/180))/2)))
+  
+  r_p_h_f <- (abs(top_f/bottom_f))^2
+  
+  #now calculate r roughness
+  r_rough_f <- r_p_h_f*exp(-0.13*cos(35*pi/180))
+  
+  #calculate temperature brightness for vegetation and soil (T b,p,veg + T b,p,soil)
+  
+  #convert temperature to Kelvin!!!
+  T_kelvin_f <- 20 + 273.15
+  t_veg_soil_f <- (1-(1.20*0.05))*(1-exp(-0.3/cos(35*pi/180)))*(1+(r_rough_f*exp(-0.3/cos(35*pi/180))))*T_kelvin_f
+  
+  t_answer_f <- (1-r_rough_f)*exp(-0.3/cos(35*pi/180))*T_kelvin_f + t_veg_soil_f
+  
+  return((256 - t_answer_f)^2)
+}
+
+a <- optimize(calculate_a, interval = c(1, 10))
+a$minimum
+
+#####relative change
+relative_w <- ((a$minimum-o$minimum)/o$minimum) *100
+print(relative_w)
+
+############change in surface temperature
+calculate_Ts <- function(input1){
+  top_f <- cos(35*pi/180) - (sqrt(input1 - ((1 - cos(70*pi/180))/2)))
+  bottom_f <- cos(35*pi/180) + (sqrt(input1 - ((1 - cos(70*pi/180))/2)))
+  
+  r_p_h_f <- (abs(top_f/bottom_f))^2
+  
+  #now calculate r roughness
+  r_rough_f <- r_p_h_f*exp(-0.13*cos(35*pi/180))
+  
+  #calculate temperature brightness for vegetation and soil (T b,p,veg + T b,p,soil)
+  
+  #convert temperature to Kelvin!!!
+  T_kelvin_f <- (20 *1.20) + 273.15 #increasing by 20%
+  t_veg_soil_f <- (1-0.05)*(1-exp(-0.3/cos(35*pi/180)))*(1+(r_rough_f*exp(-0.3/cos(35*pi/180))))*T_kelvin_f
+  
+  t_answer_f <- (1-r_rough_f)*exp(-0.3/cos(35*pi/180))*T_kelvin_f + t_veg_soil_f
+  
+  return((256 - t_answer_f)^2)
+}
+
+ts <- optimize(calculate_Ts, interval = c(1, 10))
+ts$minimum
+
+#####relative change
+relative_ts <- ((ts$minimum-o$minimum)/o$minimum) *100
+print(relative_ts)
+```
+Increasing the single-scattering albedo by 20% results in a relative change of -3.97% while increasing the surface temperature by 20% results in a relative change of 14.33%. 
+
+d.) (1 point extra credit) Which of these parameters is the retrieved dielectric constant most sensitive to?
+
+Looking at the parameters in part c, surface temperature and single-scattering albedo, the dielectric constant is most sensitive to surface temperature. 
+
+e.) ( 1 point extra credit) Now imagine you also have a measurement of V-pol brightness temperature of 243K. The VOD estimate you used earlier is uncertain, so instead you want to solve for both the dielectric constant and the VOD at the same time. What cost function would you minimize?
+
+```{r}
+knitr::include_graphics("C:/Users/mirei/OneDrive/Desktop/ESS224/PartE.png")
+```
+The image above is the cost function I would minimize. I would look at both the H-pol and V-pol brightness temperature and have a cost function that minimizes the errors when looking at the dielectric constant and at the VOD.
+ 
